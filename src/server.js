@@ -18,12 +18,12 @@ app.use(express.json());
 
 // Rutas
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/tasks', auth, require('./routes/taskRoutes')); // Proteger rutas de tareas
+app.use('/api/tasks', auth, require('./routes/taskRoutes'));
 
 // Manejo de errores
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`Servidor corriendo en puerto${PORT}`);
 });
