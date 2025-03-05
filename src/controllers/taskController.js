@@ -25,7 +25,10 @@ exports.getTasks = async (req, res, next) => {
       query.completed = completed === 'true';
     }
 
-    query.user = req.user; // Asociar tareas al usuario autenticado
+    // Si no es admin, filtrar por usuario
+    if (req.user.role !== 'admin') {
+      query.user = req.user.id;
+    }
 
     const tasks = await Task.find(query)
       .sort({ createdAt: -1 })
@@ -43,7 +46,6 @@ exports.getTasks = async (req, res, next) => {
     next(error);
   }
 };
-
 // Obtener una tarea por ID
 exports.getTaskById = async (req, res, next) => {
   try {

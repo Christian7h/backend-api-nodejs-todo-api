@@ -12,13 +12,20 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors());
-
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:4321', // Permitir solicitudes desde Astro
+  credentials: true, // Permitir cookies
+}));
 app.use(express.json());
 
 // Rutas
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/tasks', auth, require('./routes/taskRoutes'));
+app.use('/api/products', require('./routes/productRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/cart', require('./routes/cartRoutes'));
+app.use('/api/orders', require('./routes/orderRoutes'));
 
 // Manejo de errores
 app.use(errorHandler);

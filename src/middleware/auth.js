@@ -1,14 +1,13 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   let token;
 
-  // Verifica si el token está en Authorization con prefijo "Bearer"
   const authHeader = req.header('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1]; // Extrae el token después de "Bearer"
+    token = authHeader.split(' ')[1];
   } else {
-    // Si no, verifica en x-auth-token
     token = req.header('x-auth-token');
   }
 
@@ -18,7 +17,15 @@ const auth = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded.id;
+    const user = await User.findById(decoded.id).select('id role'); // Obtener ID y role
+    if (!user) {
+      return res.status(401).json({ message: 'Usuario no encontrado' });
+    }
+
+    req.user = {
+      id: user._id,
+      role: user.role,
+    };
     next();
   } catch (error) {
     res.status(401).json({ message: 'Token inválido' });
