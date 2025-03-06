@@ -16,6 +16,13 @@ connectDB();
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:4321', // Permitir solicitudes desde Astro
   credentials: true, // Permitir cookies
+  // methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  // allowedHeaders: ['Content-Type', 'Authorization'],
+  // exposedHeaders: ['Content-Type', 'Authorization'],
+
+  // // Permitir solicitudes desde el frontend
+  // preflightContinue: true,
+  
 }));
 app.use(express.json());
 
