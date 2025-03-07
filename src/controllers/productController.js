@@ -1,11 +1,16 @@
 // controllers/productController.js
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const apicache = require('apicache');
+const Cart = require('../models/Cart')
+
 exports.createProduct = async (req, res, next) => {
   if (req.user.role !== 'admin') return res.status(403).json({ message: 'No autorizado' });
   try {
     const product = new Product(req.body);
     await product.save();
+    
+    apicache.clear('/api/products'); // Limpiar caché de la lista de productos
     res.status(201).json(product);
   } catch (error) {
     next(error);
@@ -85,7 +90,12 @@ exports.updateProduct = async (req, res, next) => {
       new: true,
       runValidators: true,
     });
+
     if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
+
+    apicache.clear('/api/products'); // Limpiar caché de la lista de productos
+    apicache.clear(`/api/products/${req.params.id}`); // Limpiar caché del producto específico
+    
     res.json(product);
   } catch (error) {
     next(error);
@@ -94,11 +104,27 @@ exports.updateProduct = async (req, res, next) => {
 
 exports.deleteProduct = async (req, res, next) => {  
   if (req.user.role !== 'admin') return res.status(403).json({ message: 'No autorizado' });
+
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);          
+    // Buscar el producto a eliminar
+    const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
-    res.json({ message: 'Producto eliminado exitosamente' });
+
+    // Eliminar el producto de todos los carritos
+    await Cart.updateMany(
+      { 'items.product': req.params.id }, 
+      { $pull: { items: { product: req.params.id } } }
+    );
+
+    // Eliminar el producto de la base de datos
+    await Product.findByIdAndDelete(req.params.id);
+
+    // Limpiar la caché de productos
+    apicache.clear('/api/products'); 
+    apicache.clear(`/api/products/${req.params.id}`); 
+
+    res.json({ message: 'Producto eliminado exitosamente y eliminado de los carritos' });
   } catch (error) {
     next(error);
   }
-};  
+};
