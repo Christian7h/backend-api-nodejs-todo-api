@@ -125,7 +125,7 @@ exports.googleCallback = async (req, res, next) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.redirect(`http://localhost:4321/auth/callback?token=${token}&role=${user.role}`);
+    res.redirect(`https://chris-ecommerce-api.netlify.app/auth/callback?token=${token}&role=${user.role}`);
   } catch (error) {
     console.error('Error en googleCallback:', error);
     res.status(500).json({ message: 'Error en el servidor' });
