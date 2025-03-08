@@ -37,12 +37,39 @@ exports.login = async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id, role: user.role }, // Incluir el rol en el token
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     // Devolver el token y el rol en la respuesta
     res.json({ token, role: user.role });
   } catch (error) {
     next(error);
+  }
+};
+
+exports.verify = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'No se proporcionó token' });
+    }
+
+    // Verificar el token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Buscar al usuario en la base de datos para confirmar que existe
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Devolver la información del usuario (id y role)
+    res.json({
+      id: user._id,
+      role: user.role,
+    });
+  } catch (error) {
+    // Si el token es inválido o ha expirado
+    return res.status(401).json({ message: 'Token inválido o expirado' });
   }
 };
