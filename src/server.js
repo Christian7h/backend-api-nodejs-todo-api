@@ -6,9 +6,11 @@ const connectDB = require('./config/db')
 const taskRoutes = require('./routes/taskRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const auth = require('./middleware/auth');
+const reviewRoutes = require('./routes/reviewRoutes');
 const app = express();
 
 // Conectar a la base de datos
+
 connectDB();
 
 // Middleware
@@ -33,9 +35,13 @@ app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+
 
 // Manejo de errores
 app.use(errorHandler);
+
+// Puerto
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

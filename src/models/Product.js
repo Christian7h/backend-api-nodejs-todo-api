@@ -30,6 +30,58 @@ const productSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  imageUrl: {
+    type: String,
+    default: 'https://res.cloudinary.com/dkefmgkgc/image/upload/v1741983409/pngegg_us9kw8.png'
+  },
+  
+  // Si el producto está activo/disponible
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  
+  // Descuento aplicado al producto
+  discount: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  
+  // Etiquetas para facilitar la búsqueda
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  
+  // Calificación promedio
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  
+  // SKU (código único de producto)
+  sku: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  
+  // Fecha de última actualización
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Middleware para actualizar la fecha de modificación
+productSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+
 });
 
 module.exports = mongoose.model('Product', productSchema);
