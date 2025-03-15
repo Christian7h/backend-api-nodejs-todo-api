@@ -277,16 +277,63 @@ exports.mercadoPagoWebhook = async (req, res, next) => {
 // Método para confirmar pago de Mercado Pago desde el frontend
 exports.confirmMercadoPago = async (req, res, next) => {
   try {
-    const { payment_id, status, preference_id } = req.query;
+    const { payment_id, status, collection_status, preference_id, merchant_order_id } = req.query;
     
-    if (status !== 'approved') {
+    console.log('MercadoPago confirmation parameters:', { 
+      payment_id, 
+      status, 
+      collection_status, 
+      preference_id,
+      merchant_order_id
+    });
+    
+    // Si el pago fue rechazado, proporcionar información detallada
+    if (status === 'rejected' || collection_status === 'rejected') {
+      try {
+        // Intentamos obtener detalles del pago rechazado si existe un payment_id
+        if (payment_id) {
+          const payment = new Payment(client);
+          const paymentInfo = await payment.get({ id: payment_id });
+          
+          console.log('Rejected payment details:', JSON.stringify(paymentInfo, null, 2));
+          
+          return res.status(400).json({
+            success: false,
+            message: 'El pago fue rechazado',
+            status: status,
+            reason: paymentInfo.status_detail || 'Por motivos de seguridad',
+            payment: {
+              id: payment_id,
+              status: paymentInfo.status,
+              amount: paymentInfo.transaction_amount,
+              method: paymentInfo.payment_method_id,
+              error_code: paymentInfo.status_detail
+            }
+          });
+        }
+      } catch (paymentError) {
+        console.error('Error al obtener detalles del pago rechazado:', paymentError.message);
+      }
+      
+      // Si no pudimos obtener detalles o no hay payment_id
       return res.status(400).json({
         success: false,
-        message: 'El pago no fue aprobado',
-        status
+        message: 'El pago fue rechazado',
+        status: status,
+        reason: 'Por motivos de seguridad o validación'
       });
     }
 
+    // Continúa con el proceso normal para pagos aprobados
+    if (status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: `El pago no fue aprobado (estado: ${status})`,
+        status: status
+      });
+    }
+
+    // ...existing code for approved payments...
     const payment = new Payment(client);
     const paymentInfo = await payment.get({ id: payment_id });
     
@@ -305,6 +352,28 @@ exports.confirmMercadoPago = async (req, res, next) => {
     console.error('Error confirming MercadoPago payment:', error.message);
     next(error);
   }
+};
+
+// Endpoint para obtener tarjetas de prueba de MercadoPago
+exports.getTestCards = (req, res) => {
+  res.json({
+    success: true,
+    testCards: {
+      approved: {
+        cardNumber: "5031 7557 3453 0604",
+        cvv: "123",
+        expiryDate: "11/25",
+        cardholderName: "APRO"
+      },
+      rejected: {
+        cardNumber: "5416 7526 0258 2580",
+        cvv: "123",
+        expiryDate: "11/25",
+        cardholderName: "RECH"
+      }
+    },
+    message: "Usa estas tarjetas para probar pagos exitosos o rechazados"
+  });
 };
 
 exports.getOrders = async (req, res, next) => {
