@@ -9,6 +9,15 @@ router.post('/initiate', auth, orderController.initiatePayment);
 // Confirmar el pago y crear la orden
 router.post('/confirm', auth, orderController.confirmPayment);
 
+// Iniciar el proceso de pago con Mercado Pago
+router.post('/mercadopago/initiate', auth, orderController.initiateMercadoPago);
+
+// Webhook para recibir notificaciones de Mercado Pago (no necesita autenticación)
+router.post('/mercadopago/webhook', orderController.mercadoPagoWebhook);
+
+// Confirmar pago de Mercado Pago desde el frontend
+router.get('/mercadopago/confirm', auth, orderController.confirmMercadoPago);
+
 // Obtener el historial de órdenes
 router.get('/', auth, orderController.getOrders);
 

@@ -30,6 +30,14 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'completed', 'cancelled'],
     default: 'pending',
   },
+  paymentMethod: {
+    type: String,
+    enum: ['webpay', 'mercadopago'],
+    default: 'webpay',
+  },
+  paymentId: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
