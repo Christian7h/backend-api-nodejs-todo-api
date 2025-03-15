@@ -18,9 +18,6 @@ router.post('/mercadopago/webhook', orderController.mercadoPagoWebhook);
 // Confirmar pago de Mercado Pago desde el frontend
 router.get('/mercadopago/confirm', auth, orderController.confirmMercadoPago);
 
-// Obtener tarjetas de prueba para MercadoPago
-router.get('/mercadopago/test-cards', orderController.getTestCards);
-
 // Obtener el historial de órdenes
 router.get('/', auth, orderController.getOrders);
 

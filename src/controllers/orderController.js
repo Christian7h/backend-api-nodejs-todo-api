@@ -176,9 +176,9 @@ exports.initiateMercadoPago = async (req, res, next) => {
     const preferenceData = {
       items,
       back_urls: {
-        success: `https://chris-ecommerce-api.netlify.app/orders/mercadopago/success`,
-        failure: `https://chris-ecommerce-api.netlify.app/orders/mercadopago/failure`,
-        pending: `https://chris-ecommerce-api.netlify.app/orders/mercadopago/pending`
+        success: "https://chris-ecommerce-api.netlify.app/orders/mercadopago/success",
+        failure: "https://chris-ecommerce-api.netlify.app/orders/mercadopago/failure",
+        pending: "https://chris-ecommerce-api.netlify.app/orders/mercadopago/pending",
       },
       auto_return: "approved",
       external_reference: `USER_${req.user.id}_${Date.now()}`,
@@ -277,255 +277,34 @@ exports.mercadoPagoWebhook = async (req, res, next) => {
 // Método para confirmar pago de Mercado Pago desde el frontend
 exports.confirmMercadoPago = async (req, res, next) => {
   try {
-    const { payment_id, status, preference_id, collection_status } = req.query;
+    const { payment_id, status, preference_id } = req.query;
     
-    console.log("MercadoPago confirmation received:", { payment_id, status, preference_id, collection_status });
-
-    // Si el estado no es aprobado, intentamos obtener detalles del error
     if (status !== 'approved') {
-      let errorReason = 'Pago no aprobado';
-      let errorDetails = {};
-      
-      try {
-        // Intentar obtener información detallada del pago rechazado
-        if (payment_id) {
-          const payment = new Payment(client);
-          const paymentInfo = await payment.get({ id: payment_id });
-          console.log('Rejected payment details:', JSON.stringify(paymentInfo, null, 2));
-          
-          // Obtener el motivo específico del rechazo
-          errorReason = translateErrorCode(paymentInfo.status_detail);
-          
-          errorDetails = {
-            id: payment_id,
-            status: paymentInfo.status,
-            amount: paymentInfo.transaction_amount,
-            method: paymentInfo.payment_method_id,
-            error_code: paymentInfo.status_detail
-          };
-        }
-      } catch (detailError) {
-        console.error('Error al obtener detalles del pago rechazado:', detailError.message);
-      }
-      
-      return res.json({
+      return res.status(400).json({
         success: false,
-        message: 'El pago fue rechazado',
-        status: status,
-        reason: errorReason,
-        payment: errorDetails
+        message: 'El pago no fue aprobado',
+        status
       });
     }
 
     const payment = new Payment(client);
     const paymentInfo = await payment.get({ id: payment_id });
     
-    // Verificar si ya existe una orden con este pago
-    const existingOrder = await Order.findOne({ paymentId: payment_id });
-    if (existingOrder) {
-      return res.json({
-        success: true,
-        payment: {
-          id: paymentInfo.id,
-          status: paymentInfo.status,
-          amount: paymentInfo.transaction_amount,
-        },
-        order: existingOrder._id,
-        message: 'La orden ya fue procesada anteriormente'
-      });
-    }
-    
-    // Verificar si tenemos los datos del carrito en memoria
-    const preferenceId = paymentInfo.preference_id;
-    let transactionInfo = mpTransactionData[preferenceId];
-    
-    if (transactionInfo) {
-      // Crear orden con datos almacenados
-      const { cartItems, userId } = transactionInfo;
-      const items = cartItems.map(item => ({
-        product: item.productId,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-      const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Aquí puedes hacer validaciones adicionales si es necesario
+    // ...
 
-      const order = new Order({
-        user: userId,
-        items,
-        total,
-        status: 'completed',
-        paymentMethod: 'mercadopago',
-        paymentId: payment_id,
-      });
-      await order.save();
-
-      // Reducir stock
-      for (const item of cartItems) {
-        try {
-          const product = await Product.findById(item.productId);
-          if (product) {
-            product.stock -= item.quantity;
-            await product.save();
-          }
-        } catch (err) {
-          console.error("Error al actualizar stock:", err);
-        }
+    res.json({
+      success: true,
+      payment: {
+        id: paymentInfo.id,
+        status: paymentInfo.status,
+        amount: paymentInfo.transaction_amount,
       }
-
-      // Vaciar carrito
-      try {
-        const cart = await Cart.findOne({ user: userId });
-        if (cart) {
-          cart.items = [];
-          await cart.save();
-        }
-      } catch (err) {
-        console.error("Error al vaciar carrito:", err);
-      }
-
-      delete mpTransactionData[preferenceId];
-      
-      return res.json({
-        success: true,
-        payment: {
-          id: paymentInfo.id,
-          status: paymentInfo.status,
-          amount: paymentInfo.transaction_amount,
-        },
-        order: order._id
-      });
-    } else {
-      // Recuperar carrito actual del usuario
-      const cart = await Cart.findOne({ user: req.user.id }).populate('items.product');
-      
-      if (cart && cart.items.length > 0) {
-        // Crear orden de emergencia con el carrito actual
-        const items = cart.items.map(item => ({
-          product: item.product._id,
-          quantity: item.quantity,
-          price: item.product.price,
-        }));
-        
-        const total = cart.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-        
-        const order = new Order({
-          user: req.user.id,
-          items,
-          total,
-          status: 'completed',
-          paymentMethod: 'mercadopago',
-          paymentId: payment_id,
-        });
-        
-        await order.save();
-        
-        // Reducir stock y vaciar carrito
-        for (const item of cart.items) {
-          const product = item.product;
-          product.stock -= item.quantity;
-          await product.save();
-        }
-        
-        cart.items = [];
-        await cart.save();
-        
-        return res.json({
-          success: true,
-          payment: {
-            id: paymentInfo.id,
-            status: paymentInfo.status,
-            amount: paymentInfo.transaction_amount,
-          },
-          order: order._id,
-          message: 'Orden creada con datos del carrito actual'
-        });
-      } else {
-        // Si no hay transacción ni carrito, crear orden mínima
-        const order = new Order({
-          user: req.user.id,
-          items: [{
-            product: null,
-            quantity: 1,
-            price: paymentInfo.transaction_amount
-          }],
-          total: paymentInfo.transaction_amount,
-          status: 'completed',
-          paymentMethod: 'mercadopago',
-          paymentId: payment_id,
-        });
-        
-        await order.save();
-        
-        return res.json({
-          success: true,
-          payment: {
-            id: paymentInfo.id,
-            status: paymentInfo.status,
-            amount: paymentInfo.transaction_amount,
-          },
-          order: order._id,
-          message: 'Orden creada con datos mínimos'
-        });
-      }
-    }
+    });
   } catch (error) {
     console.error('Error confirming MercadoPago payment:', error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al procesar la confirmación del pago',
-      error: error.message
-    });
+    next(error);
   }
-};
-
-// Función para traducir códigos de error de Mercado Pago
-function translateErrorCode(code) {
-  const errorCodes = {
-    'cc_rejected_bad_filled_date': 'Fecha de vencimiento incorrecta',
-    'cc_rejected_bad_filled_other': 'Datos de tarjeta incorrectos',
-    'cc_rejected_bad_filled_security_code': 'Código de seguridad incorrecto',
-    'cc_rejected_blacklist': 'La tarjeta está en lista negra',
-    'cc_rejected_call_for_authorize': 'La tarjeta requiere autorización',
-    'cc_rejected_card_disabled': 'La tarjeta está desactivada',
-    'cc_rejected_duplicated_payment': 'Pago duplicado',
-    'cc_rejected_high_risk': 'Pago rechazado por riesgo',
-    'cc_rejected_insufficient_amount': 'Fondos insuficientes',
-    'cc_rejected_invalid_installments': 'Cuotas no válidas',
-    'cc_rejected_max_attempts': 'Demasiados intentos'
-  };
-  
-  return errorCodes[code] || 'Error en el procesamiento del pago';
-}
-
-// Endpoint para obtener tarjetas de prueba para MercadoPago
-exports.getTestCards = (req, res) => {
-  res.json({
-    testCards: {
-      approvedVisa: {
-        cardNumber: "4075 5957 1648 3764",
-        expirationDate: "11/25",
-        cvv: "123",
-        cardholderName: "APRO"
-      },
-      approvedMastercard: {
-        cardNumber: "5031 7557 3453 0604",
-        expirationDate: "11/25",
-        cvv: "123",
-        cardholderName: "APRO"
-      },
-      rejected: {
-        cardNumber: "5416 7526 0258 2580",
-        expirationDate: "11/25",
-        cvv: "123",
-        cardholderName: "RECH"
-      }
-    },
-    errorCodes: {
-      "cc_rejected_high_risk": "Pago rechazado por seguridad",
-      "cc_rejected_insufficient_amount": "Fondos insuficientes",
-      "cc_rejected_bad_filled_security_code": "Código de seguridad incorrecto"
-    }
-  });
 };
 
 exports.getOrders = async (req, res, next) => {
