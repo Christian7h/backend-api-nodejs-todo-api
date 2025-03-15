@@ -21,7 +21,7 @@ const tx = new WebpayPlus.Transaction(
 
 // Configuración de Mercado Pago
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-8270845525110595-031514-06263c0f69ea5026395222590bc275b6-1081593175',
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-630998023310293-031516-39ddedc703c4673ebd9c11d3becca062-1081593175',
 });
 
 const transactionData = {};
