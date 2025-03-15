@@ -176,13 +176,13 @@ exports.initiateMercadoPago = async (req, res, next) => {
     const preferenceData = {
       items,
       back_urls: {
-        success: `http://localhost:4321/orders/mercadopago/success`,
-        failure: `http://localhost:4321/orders/mercadopago/failure`,
-        pending: `http://localhost:4321/orders/mercadopago/pending`
+        success: `https://chris-ecommerce-api.netlify.app/orders/mercadopago/success`,
+        failure: `https://chris-ecommerce-api.netlify.app/orders/mercadopago/failure`,
+        pending: `https://chris-ecommerce-api.netlify.app/orders/mercadopago/pending`
       },
       auto_return: "approved",
       external_reference: `USER_${req.user.id}_${Date.now()}`,
-      notification_url: `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/orders/mercadopago/webhook`,
+      notification_url: `${process.env.BACKEND_URL || 'https://backend-api-nodejs-todo-api-production.up.railway.app'}/api/orders/mercadopago/webhook`,
     };
 
     const response = await preference.create({ body: preferenceData });
